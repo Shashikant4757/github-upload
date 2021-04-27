@@ -1,0 +1,16 @@
+Identifying Duplicate Values in an Array using Mule 4 DataWeave 2.0
+
+
+-------
+%dw 2.0
+output application/json  
+var record =     [    "a" , "b" ,"a" ,"c" ,"d", "e" ,"c" ,"f" ]
+ var distinctVal = record distinctBy $
+ var duplicates = (distinctVal map(key,value) -> {
+    count : if(sizeOf((record map $ == key) filter $ ) > 1) key else null
+}) filter $.count !=null 
+---
+{
+    distincValues : distinctVal,
+    duplicatesAre : duplicates.count
+}
