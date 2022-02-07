@@ -1,0 +1,49 @@
+****Pagination****
+
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	<sub-flow name="records-pagination" doc:id="932e32a6-02f7-4316-93f0-cfd61753d52f" >
+		<ee:transform doc:name="Arrays based on size limit" doc:id="7840b0c0-c073-4379-be44-bf23971d5aef" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+var rowcount = vars.count as Number
+var maxSize = ceil(rowcount/vars.top)
+fun prepareList(list:Array, maxSize: Number) = if(sizeOf(list) >= maxSize )
+list
+else
+prepareList(list ++ [(sizeOf(list) + 1) as Number],maxSize)
+---
+prepareList([],maxSize) as Array]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="totalSuccessRecords" ><![CDATA[%dw 2.0
+output application/java
+---
+0 as Number]]></ee:set-variable>
+			</ee:variables>			
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="d69e0931-840b-418e-8784-70ac03b5bce4" >
+			<ee:transform doc:name="set query based on offset and limit" doc:id="4858c50b-583d-4f4a-ac3a-df4891ced814">
+				<ee:message>
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('secure::mdm.path.select') ++ vars.select ++ Mule::p('secure::mdm.path.expand') ++ vars.expand ++ Mule::p('secure::mdm.path.orderby') ++ vars.orderby ++ Mule::p('secure::mdm.path.top') ++ vars.top ++ Mule::p('secure::mdm.path.skip') ++ vars.skip]]></ee:set-payload>
+				</ee:message>
+				<ee:variables>
+				</ee:variables>
+			</ee:transform>
+			<logger level="INFO" doc:name="Log the query" doc:id="4d9b9fc1-5f35-459c-91b1-2ab39535b429" message='#["\n"] *** Master Data query for FailureTree "#[payload]" ***]'/>
+			<flow-ref doc:name="MasterdataCall" doc:id="ee14bc07-2d0a-4438-9765-24ce3533603e" name="MasterdataCall"/>
+			<flow-ref doc:name="failure-tree-records-to-sfdc" doc:id="af8065ce-77eb-4618-98a2-9009c8bdffd9" name="failure-tree-records-to-sfdc" />
+			<set-variable value="#[vars.skip + vars.top]" doc:name="Reset Offset value" doc:id="632cd243-918c-47de-83ea-77da3be67cc6" variableName="skip"/>
+		</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="4c38f8a3-28e0-49b8-b445-b48843571bce" message='#["Total success records: #[vars.totalSuccessRecords]"]'/>
+	</sub-flow>
+</mule>
